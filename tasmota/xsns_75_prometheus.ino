@@ -61,7 +61,7 @@ const char *UnitfromType(const char *type)  // find unit for measurment type
   return "";
 }
 
-const char *FormatMetricName(const char *metric)  // cleanup spaces and uppercases for Prmetheus metrics conventions
+char *FormatMetricName(const char *metric)  // cleanup spaces and uppercases for Prmetheus metrics conventions
 {
   char *formated = (char *)malloc(strlen(metric)+1);
   uint32_t cnt = 0;
@@ -161,10 +161,12 @@ void HandleMetrics(void)
               const char *value = key3.getValue().getStr(nullptr);
               if (value != nullptr && isdigit(value[0]))
               {
-                const char *sensor = FormatMetricName(key2.getStr());                                                                                        //cleanup sensor name
-                const char *type = FormatMetricName(key3.getStr());                                                                                          //cleanup sensor type
+                char *sensor = FormatMetricName(key2.getStr());                                                                                        //cleanup sensor name
+                char *type = FormatMetricName(key3.getStr());                                                                                          //cleanup sensor type
                 const char *unit = UnitfromType(type);                                                                                                       //grab base unit corresponding to type
                 WSContentSend_P(PSTR("# TYPE tasmota_sensors_%s%s gauge\ntasmota_sensors_%s%s{sensor=\"%s\"} %s\n"), type, unit, type, unit, sensor, value); //build metric as "# TYPE tasmota_sensors_%type%_%unit% gauge\ntasmotasensors_%type%_%unit%{sensor=%sensor%"} %value%""
+                free(sensor);
+                free(type);
               }
             }
           }
@@ -173,10 +175,16 @@ void HandleMetrics(void)
             const char *value = value2.getStr(nullptr);
             if (value != nullptr && isdigit(value[0]))
             {
-              const char *sensor = FormatMetricName(key1.getStr());
-              const char *type = FormatMetricName(key2.getStr());
+              char *sensor = FormatMetricName(key1.getStr());
+              char *type = FormatMetricName(key2.getStr());
               const char *unit = UnitfromType(type);
-              WSContentSend_P(PSTR("# TYPE tasmota_sensors_%s%s gauge\ntasmota_sensors_%s%s{sensor=\"%s\"} %s\n"), type, unit, type, unit, sensor, value);
+              if (strcmp(type, "totalstarttime") == 0) {
+                  // this metric causes prometheus of fail
+              } else {
+                  WSContentSend_P(PSTR("# TYPE tasmota_sensors_%s%s gauge\ntasmota_sensors_%s%s{sensor=\"%s\"} %s\n"), type, unit, type, unit, sensor, value);
+              }
+              free(sensor);
+              free(type);
             }
           }
         }
@@ -186,8 +194,9 @@ void HandleMetrics(void)
         const char *value = value1.getStr(nullptr);
         if (value != nullptr && isdigit(value[0] && strcmp(key1.getStr(), "Time") != 0))  //remove false 'time' metric
         { 
-          const char *sensor = FormatMetricName(key1.getStr());
+          char *sensor = FormatMetricName(key1.getStr());       
           WSContentSend_P(PSTR("# TYPE tasmota_sensors_%s gauge\ntasmota_sensors{sensor=\"%s\"} %s\n"), sensor, sensor, value);
+          free(sensor);
         }
       }
     }

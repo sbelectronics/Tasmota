@@ -129,6 +129,9 @@ enum UserSelectablePins {
   GPIO_AS608_TX, GPIO_AS608_RX,        // Serial interface AS608 / R503
   GPIO_SHELLY_DIMMER_BOOT0, GPIO_SHELLY_DIMMER_RST_INV,
   GPIO_RC522_RST,                      // RC522 reset
+  GPIO_ADC_ACS_POWER,
+  GPIO_PG,
+  GPIO_FLT,
   GPIO_SENSOR_END };
 
 enum ProgramSelectablePins {
@@ -237,7 +240,10 @@ const char kSensorNames[] PROGMEM =
   D_SENSOR_WE517_TX "|" D_SENSOR_WE517_RX "|"
   D_SENSOR_AS608_TX "|" D_SENSOR_AS608_RX "|"
   D_SENSOR_SHELLY_DIMMER_BOOT0 "|" D_SENSOR_SHELLY_DIMMER_RST_INV "|"
-  D_SENSOR_RC522_RST
+  D_SENSOR_RC522_RST "|"
+  D_SENSOR_ADC_ACS_POWER "|"
+  D_SENSOR_PG "|"
+  D_SENSOR_FLT
   ;
 
 const char kSensorNamesFixed[] PROGMEM =
@@ -650,6 +656,15 @@ const uint16_t kGpioNiceList[] PROGMEM = {
   AGPIO(GPIO_ADC_CT_POWER) + MAX_ADCS,    // Current
   AGPIO(GPIO_ADC_JOY) + MAX_ADCS,         // Joystick
 #endif  // ESP32
+
+/*-------------------------------------------------------------------------------------------*\
+ * smbaker
+\*-------------------------------------------------------------------------------------------*/
+
+#ifdef USE_DIGINPUT
+  AGPIO(GPIO_PG) + MAX_DIGINPUT,             // ACS Power Good
+  AGPIO(GPIO_FLT) + MAX_DIGINPUT,            // ACS Fault
+#endif
 };
 
 /*-------------------------------------------------------------------------------------------*\
@@ -667,6 +682,7 @@ const uint16_t kAdcNiceList[] PROGMEM = {
   AGPIO(GPIO_ADC_RANGE),                  // Range
   AGPIO(GPIO_ADC_CT_POWER),               // Current
   AGPIO(GPIO_ADC_JOY),                    // Joystick
+  AGPIO(GPIO_ADC_ACS_POWER),              // Current via ACS
 };
 #endif  // ESP8266
 
@@ -681,6 +697,7 @@ enum UserSelectableAdc {
   ADC_RANGE,          // Range
   ADC_CT_POWER,       // Current
   ADC_JOY,            // Joystick
+  ADC_ACS_POWER,       // Current via ACS
 //  ADC_SWITCH,         // Switch
 //  ADC_SWITCH_INV,
   ADC_END };

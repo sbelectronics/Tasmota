@@ -73,7 +73,14 @@
 #define ANALOG_CT_MULTIPLIER          2146             // (uint32_t) Multiplier*100000 to convert raw ADC peak to peak range 0..ANALOG_RANGE to RMS current in Amps. Value of 100000 corresponds to 1
 #define ANALOG_CT_VOLTAGE             2300             // (int) Convert current in Amps to apparrent power in Watts using voltage in Volts*10. Value of 2200 corresponds to 220V
 
+#define ANALOG_ACS_FLAGS              0
+#define ANALOG_ACS_MIDPOINT           2500             // midpoint of sensor
+#define ANALOG_ACS_DIVISOR            2325             // vIn = adc/divisor
+#define ANALOG_ACS_SENS               200              // mV / A
+#define ANALOG_ACS_VOLTAGE            512              // Volts * 100
+
 #define CT_FLAG_ENERGY_RESET          (1 << 0)         // Reset energy total
+#define ADS_FLAG_ENERGY_RESET         (1 << 0)
 
 // Buttons
 //        ---- Inverted
@@ -110,6 +117,7 @@ struct {
   uint32_t param2 = 0;
   int param3 = 0;
   int param4 = 0;
+  int param5 = 0;
   uint32_t previous_millis = 0;
   uint16_t last_value = 0;
   uint8_t type = 0;
@@ -169,6 +177,13 @@ void AdcInitParams(uint8_t idx) {
       Adc[idx].param2 = ANALOG_CT_MULTIPLIER;    // (uint32_t) 100000
       Adc[idx].param3 = ANALOG_CT_VOLTAGE;       // (int)      10
     }
+    else if (ADC_ACS_POWER == Adc[idx].type) {
+      Adc[idx].param1 = ANALOG_ACS_FLAGS;         // (uint32_t) 0
+      Adc[idx].param2 = ANALOG_ACS_MIDPOINT;      // (uint32_t) 2500
+      Adc[idx].param3 = ANALOG_ACS_DIVISOR;       // (int) 2325
+      Adc[idx].param4 = ANALOG_ACS_SENS;          // (int) 200
+      Adc[idx].param5 = ANALOG_ACS_VOLTAGE;       // (int) 512
+    }    
   }
   if ((Adcs.type != Adc[idx].type) || (0 == Adc[idx].param1) || (Adc[idx].param1 > ANALOG_RANGE)) {
     if ((ADC_BUTTON == Adc[idx].type) || (ADC_BUTTON_INV == Adc[idx].type)) {
@@ -208,6 +223,9 @@ void AdcInit(void) {
     if (PinUsed(GPIO_ADC_CT_POWER, i)) {
       AdcAttach(Pin(GPIO_ADC_CT_POWER, i), ADC_CT_POWER);
     }
+    if (PinUsed(GPIO_ADC_ACS_POWER, i)) {
+      AdcAttach(Pin(GPIO_ADC_ACS_POWER, i), ADC_ACS_POWER);
+    }    
     if (PinUsed(GPIO_ADC_JOY, i)) {
       AdcAttach(Pin(GPIO_ADC_JOY, i), ADC_JOY);
     }
@@ -358,6 +376,30 @@ void AdcGetCurrentPower(uint8_t idx, uint8_t factor) {
   Adc[idx].previous_millis = current_millis;
 }
 
+void AdcGetAcsPower(uint8_t idx, uint8_t factor) {
+  // factor 1 = 2 samples
+  // factor 2 = 4 samples
+  // factor 3 = 8 samples
+  // factor 4 = 16 samples
+  // factor 5 = 32 samples
+  uint16_t analog = 0;
+  float voltage;
+
+  analog = AdcRead(Adc[idx].pin, 5);
+
+  voltage = (float)(analog);
+  voltage = voltage * 10.0 / ((float) Adc[idx].param3);   // divide by the resitor divider
+  voltage = voltage - (((float) Adc[idx].param2) / 1000.0);               // subtract the center
+
+  Adc[idx].current = voltage * 1000.0 / ((float) Adc[idx].param4);                 // convert mv to A
+
+  float power = Adc[idx].current * (float)(ANALOG_ACS_VOLTAGE /*Adc[idx].param5*/) / 100.0;
+
+  uint32_t current_millis = millis();
+  Adc[idx].energy = Adc[idx].energy + ((power * (current_millis - Adc[idx].previous_millis)) / 3600000000);
+  Adc[idx].previous_millis = current_millis;
+}
+
 void AdcEverySecond(void) {
   for (uint32_t idx = 0; idx < Adcs.present; idx++) {
     if (ADC_TEMP == Adc[idx].type) {
@@ -370,6 +412,9 @@ void AdcEverySecond(void) {
     }
     else if (ADC_CT_POWER == Adc[idx].type) {
       AdcGetCurrentPower(idx, 5);
+    }
+    else if (ADC_ACS_POWER == Adc[idx].type) {
+      AdcGetAcsPower(idx, 5);
     }
   }
 }
@@ -388,6 +433,12 @@ void AdcShow(bool json) {
   char adc_name[10] = { 0 };  // ANALOG8
   char adc_idx[3] = { 0 };
   uint32_t offset = 0;
+
+  float voltage;
+  char voltage_chr[FLOATSZ];
+  char current_chr[FLOATSZ];
+  char power_chr[FLOATSZ];
+  char energy_chr[FLOATSZ];
 
   bool jsonflg = false;
   for (uint32_t idx = 0; idx < Adcs.present; idx++) {
@@ -469,14 +520,10 @@ void AdcShow(bool json) {
       case ADC_CT_POWER: {
         AdcGetCurrentPower(idx, 5);
 
-        float voltage = (float)(Adc[idx].param3) / 10;
-        char voltage_chr[FLOATSZ];
+        voltage = (float)(Adc[idx].param3) / 10;
         dtostrfd(voltage, Settings.flag2.voltage_resolution, voltage_chr);
-        char current_chr[FLOATSZ];
         dtostrfd(Adc[idx].current, Settings.flag2.current_resolution, current_chr);
-        char power_chr[FLOATSZ];
         dtostrfd(voltage * Adc[idx].current, Settings.flag2.wattage_resolution, power_chr);
-        char energy_chr[FLOATSZ];
         dtostrfd(Adc[idx].energy, Settings.flag2.energy_resolution, energy_chr);
 
         if (json) {
@@ -489,6 +536,38 @@ void AdcShow(bool json) {
             DomoticzSensor(DZ_VOLTAGE, voltage_chr);
             DomoticzSensor(DZ_CURRENT, current_chr);
             domo_flag[ADC_CT_POWER] = true;
+          }
+#endif  // USE_DOMOTICZ
+#ifdef USE_WEBSERVER
+        } else {
+          WSContentSend_PD(HTTP_SNS_VOLTAGE, voltage_chr);
+          WSContentSend_PD(HTTP_SNS_CURRENT, current_chr);
+          WSContentSend_PD(HTTP_SNS_POWER, power_chr);
+          WSContentSend_PD(HTTP_SNS_ENERGY_TOTAL, energy_chr);
+#endif  // USE_WEBSERVER
+        }
+        break;
+      }
+      case ADC_ACS_POWER: {
+        AdcGetAcsPower(idx, 5);
+
+        voltage = (float)(ANALOG_ACS_VOLTAGE /*Adc[idx].param5*/) / 100.0;
+
+        dtostrfd(voltage, Settings.flag2.voltage_resolution, voltage_chr);
+        dtostrfd(Adc[idx].current, Settings.flag2.current_resolution, current_chr);
+        dtostrfd(voltage * Adc[idx].current, Settings.flag2.wattage_resolution, power_chr);
+        dtostrfd(Adc[idx].energy, Settings.flag2.energy_resolution, energy_chr);
+
+        if (json) {
+          AdcShowContinuation(&jsonflg);
+          ResponseAppend_P(PSTR("\"ACSEnergy%s\":{\"" D_JSON_ENERGY "\":%s,\"" D_JSON_POWERUSAGE "\":%s,\"" D_JSON_VOLTAGE "\":%s,\"" D_JSON_CURRENT "\":%s}"),
+            adc_idx, energy_chr, power_chr, voltage_chr, current_chr);
+#ifdef USE_DOMOTICZ
+          if ((0 == TasmotaGlobal.tele_period) && (!domo_flag[ADC_ACS_POWER])) {
+            DomoticzSensor(DZ_POWER_ENERGY, power_chr);
+            DomoticzSensor(DZ_VOLTAGE, voltage_chr);
+            DomoticzSensor(DZ_CURRENT, current_chr);
+            domo_flag[ADC_ACS_POWER] = true;
           }
 #endif  // USE_DOMOTICZ
 #ifdef USE_WEBSERVER
@@ -548,6 +627,9 @@ void CmndAdcParam(void) {
           if (ADC_RANGE == XdrvMailbox.payload) {
             Adc[idx].param3 = abs(strtol(subStr(sub_string, XdrvMailbox.data, ",", 4), nullptr, 10));
             Adc[idx].param4 = abs(strtol(subStr(sub_string, XdrvMailbox.data, ",", 5), nullptr, 10));
+          } else if (ADC_ACS_POWER == XdrvMailbox.payload) {
+            Adc[idx].param3 = abs(strtol(subStr(sub_string, XdrvMailbox.data, ",", 4), nullptr, 10));
+            Adc[idx].param4 = abs(strtol(subStr(sub_string, XdrvMailbox.data, ",", 5), nullptr, 10));            
           } else {
             Adc[idx].param3 = (int)(CharToFloat(subStr(sub_string, XdrvMailbox.data, ",", 4)) * 10000);
           }
@@ -559,6 +641,14 @@ void CmndAdcParam(void) {
               Adc[idx].param1 ^= CT_FLAG_ENERGY_RESET;  // Cancel energy reset flag
             }
           }
+          if (ADC_ACS_POWER == XdrvMailbox.payload) {
+            if (((1 == Adc[idx].param1) & ADS_FLAG_ENERGY_RESET) > 0) {
+              for (uint32_t idx = 0; idx < MAX_ADCS; idx++) {
+                Adc[idx].energy = 0;
+              }
+              Adc[idx].param1 ^= ADS_FLAG_ENERGY_RESET;  // Cancel energy reset flag
+            }
+          }          
         } else {                                         // Set default values based on current adc type
           // AdcParam 2
           // AdcParam 3

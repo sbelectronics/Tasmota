@@ -877,6 +877,49 @@
 
 #endif  // FIRMWARE_MINICUSTOM
 
+#ifdef FIRMWARE_SMBAKER_EMBEDDED
+#define USE_PROMETHEUS
+#define USE_TCP_BRIDGE
+#define USE_DIGINPUT
+#undef USE_ADE7953
+#undef USE_ARILUX_RF
+#undef USE_ARMTRONIX_DIMMERS
+#undef USE_BL0940
+#undef USE_EMULATION_HUE
+#undef USE_EXS_DIMMER
+#undef USE_IR_RECEIVE
+#undef USE_IR_REMOTE
+#undef USE_PWM_DIMMER
+#undef USE_PZEM004T
+#undef USE_PZEM_AC
+#undef USE_PZEM_DC
+#undef USE_SHUTTER
+#undef USE_SM16716
+#undef USE_SM2135
+#undef USE_TUYA_DIMMER
+#undef USE_WS2812
+#endif
+
+#ifdef FIRMWARE_SMBAKER_SONOFF
+#define USE_PROMETHEUS
+#undef USE_ARILUX_RF
+#undef USE_ARMTRONIX_DIMMERS
+#undef USE_EMULATION_HUE
+#undef USE_EXS_DIMMER
+#undef USE_IR_RECEIVE
+#undef USE_IR_REMOTE
+#undef USE_PWM_DIMMER
+#undef USE_PZEM004T
+#undef USE_PZEM_AC
+#undef USE_PZEM_DC
+#undef USE_SHUTTER
+#undef USE_SM16716
+#undef USE_SM2135
+#undef USE_TUYA_DIMMER
+#undef USE_WS2812
+#endif
+
+
 
 #ifdef ESP32
 #include "tasmota_configurations_ESP32.h"

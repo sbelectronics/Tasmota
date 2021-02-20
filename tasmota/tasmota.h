@@ -56,6 +56,7 @@ const uint8_t MAX_LEDS = 4;                 // Max number of leds
 const uint8_t MAX_KEYS = 4;                 // Max number of keys or buttons
 const uint8_t MAX_PWMS = 5;                 // Max number of PWM channels
 const uint8_t MAX_COUNTERS = 4;             // Max number of counter sensors
+const uint8_t MAX_DIGINPUT = 4;             // Max number of smbaker digital inputs
 const uint8_t MAX_TIMERS = 16;              // Max number of Timers
 const uint8_t MAX_PULSETIMERS = 8;          // Max number of supported pulse timers
 const uint8_t MAX_DOMOTICZ_IDX = 4;         // Max number of Domoticz device, key and switch indices

@@ -556,7 +556,8 @@ void SettingsLoad(void) {
   }
   if (settings_location > 0) {
     ESP.flashRead(settings_location * SPI_FLASH_SEC_SIZE, (uint32*)&Settings, sizeof(Settings));
-    AddLog_P(LOG_LEVEL_NONE, PSTR(D_LOG_CONFIG D_LOADED_FROM_FLASH_AT " %X, " D_COUNT " %lu"), settings_location, Settings.save_flag);
+    // XXX smbaker emit this at info loglevel
+    AddLog_P(LOG_LEVEL_DEBUG, PSTR(D_LOG_CONFIG D_LOADED_FROM_FLASH_AT " %X, " D_COUNT " %lu"), settings_location, Settings.save_flag);
   }
 #endif  // ESP8266
 #ifdef ESP32
