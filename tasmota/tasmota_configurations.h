@@ -878,6 +878,7 @@
 #endif  // FIRMWARE_MINICUSTOM
 
 #ifdef FIRMWARE_SMBAKER_EMBEDDED
+// NOTE: USE_SMBAKER_PI_LAN is defined in platformio_tasmota_env.ini
 #define USE_PROMETHEUS
 #define USE_TCP_BRIDGE
 #define USE_DIGINPUT

@@ -10,6 +10,7 @@
 .gcc-flags.json
 .cache
 tasmota/user_config_override.h
+tasmota/smbaker_pi_lan.h
 build
 build_output
 firmware.map
